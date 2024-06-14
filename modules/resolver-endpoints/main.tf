@@ -12,10 +12,11 @@ resource "aws_route53_resolver_endpoint" "this" {
   security_group_ids     = local.security_group_ids
 
   dynamic "ip_address" {
-    for_each = var.subnet_ids
+    for_each = var.ip_address
 
     content {
-      subnet_id = ip_address.value
+      ip        = ip_address.value.ip
+      subnet_id = ip_address.value.subnet_id
     }
   }
 
@@ -44,12 +45,16 @@ resource "aws_security_group" "this" {
     }
   }
 
-  egress {
-    description = "Allow All"
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "egress" {
+    for_each = toset(["tcp", "udp"])
+
+    content {
+      description = "Allow DNS"
+      protocol    = egress.value
+      from_port   = 53
+      to_port     = 53
+      cidr_blocks = var.security_group_egress_cidr_blocks
+    }
   }
 
   tags = var.security_group_tags
